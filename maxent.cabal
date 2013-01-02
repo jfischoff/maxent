@@ -16,8 +16,23 @@ version:             0.1.0.0
 synopsis:            Compute Maximum Entropy Distrubtions
 
 -- A longer description of the package.
-description: Compute Maximum Entropy Distrubtions
-
+description: Use this package to compute maximum entropy distributions given a list of values and
+  list of constraints.
+  .
+  Here is a the example from Probability the Logic of Science 
+  .
+  &#x20;> maxent ([1,2,3], [average 1.5])
+  .
+  Right [0.61, 0.26, 0.11]
+  .
+  The classic dice example
+  .
+  &#x20;> maxent ([1,2,3,4,5,6], [average 4.5])
+  .
+  Right [.05, .07, 0.11, 0.16, 0.23, 0.34]
+  
+  I will document this more ... soonish
+  
 -- URL for the project homepage or repository.
 homepage:            https://github.com/jfischoff/maxent
 

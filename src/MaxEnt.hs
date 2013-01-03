@@ -2,7 +2,9 @@
 -- The maximum entropy method, or MAXENT, is variational approach for computing probability 
 -- distributions given a list of moment, or expected value, constraints.
 -- 
--- Here are a link for background info.
+-- Here are some links for background info.
+-- A good overview of applications:
+-- <http://cmm.cit.nih.gov/maxent/letsgo.html>
 -- On the idea of maximum entropy in general: 
 -- <http://en.wikipedia.org/wiki/Principle_of_maximum_entropy>
 --  
@@ -12,14 +14,18 @@
 -- 
 -- Here is a the example from Probability the Logic of Science
 -- 
--- > maxent ([1,2,3], [average 1.5])
--- 
+-- @
+--  maxent ([1,2,3], [average 1.5])
+-- @
+--
 -- Right [0.61, 0.26, 0.11]
 -- 
 -- The classic dice example
--- 
--- > maxent ([1,2,3,4,5,6], [average 4.5])
--- 
+--
+-- @
+--  maxent ([1,2,3,4,5,6], [average 4.5])
+-- @
+--
 -- Right [.05, .07, 0.11, 0.16, 0.23, 0.34]
 -- 
 -- One can use different constraints besides the average value there.  

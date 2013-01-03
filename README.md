@@ -3,7 +3,9 @@
 The maximum entropy method, or MAXENT, is variational approach for computing probability 
 distributions given a list of moment, or expected value, constraints.
 
-Here are a link for background info.
+Here are some links for background info.
+A good overview of applications:
+<http://cmm.cit.nih.gov/maxent/letsgo.html>
 On the idea of maximum entropy in general: 
 <http://en.wikipedia.org/wiki/Principle_of_maximum_entropy>
  

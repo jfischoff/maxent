@@ -9,18 +9,34 @@ import GHC.IO                   (unsafePerformIO)
 sumWith :: Num c => (a -> b -> c) -> [a] -> [b] -> c 
 sumWith f xs = sum . zipWith f xs
 
-pOfK :: Floating a => [a] -> [a -> a] -> [a] -> Int -> a
-pOfK values fs ls k = exp (negate . sumWith (\l f -> l * f (values !! k)) ls $ fs) / 
+pOfK :: Floating a => [a] -> [ExpectationFunction a] -> [a] -> Int -> a
+pOfK values fs ls k = exp (negate . sumWith (\l f -> l * f k (values !! k)) ls $ fs) / 
     partitionFunc values fs ls 
 
-probs :: Floating b => [b] -> [b -> b] -> [b] -> [b]    
+probs :: Floating b 
+      => [b] 
+      -> [ExpectationFunction b] 
+      -> [b] 
+      -> [b]    
 probs values fs ls = map (pOfK values fs ls) [0..length values - 1] 
 
-partitionFunc :: Floating a => [a] -> [a -> a] -> [a] -> a
-partitionFunc values fs ls = sum $ [ exp ((-l) * f x) | x <- values, (f, l) <- zip fs ls]
+partitionFunc :: Floating a 
+              => [a] 
+              -> [ExpectationFunction a]
+              -> [a] 
+              -> a
+partitionFunc values fs ls = sum $ [ exp ((-l) * f i x) | 
+                                (i, x) <- zip [0..] values, 
+                                (f, l) <- zip fs ls]
 
-objectiveFunc :: Floating a => [a] -> [a -> a] -> [a] -> [a] -> a
-objectiveFunc values fs moments ls = log (partitionFunc values fs ls) + sumWith (*) ls moments
+objectiveFunc :: Floating a 
+              => [a] 
+              -> [ExpectationFunction a] 
+              -> [a] 
+              -> [a] 
+              -> a
+objectiveFunc values fs moments ls = log (partitionFunc values fs ls) 
+                                   + sumWith (*) ls moments
 
 toFunction :: (forall a. Floating a => [a] -> a) -> Function Simple
 toFunction f = VFunction (f . U.toList)
@@ -32,19 +48,21 @@ toDoubleF :: (forall a. Floating a => [a] -> a) -> [Double] -> Double
 toDoubleF f x = f x 
 
 -- | Constraint type. Think of this as f and c in sum pi (f x) = c
-type Constraint a = (a -> a, a)
+type Constraint a = (ExpectationFunction a, a)
+
+type ExpectationFunction a = (Int -> a -> a)
 
 -- make a constraint from function and constant
-constraint :: Floating a => (a -> a) -> a -> Constraint a
+constraint :: Floating a => ExpectationFunction a -> a -> Constraint a
 constraint = (,)
 
 -- The average constraint
 average :: Floating a => a -> Constraint a
-average m = constraint id m
+average m = constraint (const id) m
 
 -- The variance constraint
 variance :: Floating a => a -> Constraint a
-variance sigma = constraint (^(2 :: Int)) sigma
+variance sigma = constraint (const (^(2 :: Int))) sigma
 
 -- | The main entry point for computing discrete maximum entropy distributions.
 --   
@@ -57,18 +75,18 @@ maxent params = result where
     values :: Floating a => [a]
     values = fst params
     
-    constraints :: Floating a => [(a -> a, a)]
+    constraints :: Floating a => [(ExpectationFunction a, a)]
     constraints = snd params
     
-    fsmoments :: Floating a => ([a -> a], [a])
+    fsmoments :: Floating a => ([ExpectationFunction a], [a])
     fsmoments = unzip constraints 
     
-    fs :: [Double -> Double]
+    fs :: [Int -> Double -> Double]
     fs = fst fsmoments
     
     -- hmm maybe there is a better way to get rid of the defaulting
     guess = U.fromList $ replicate 
-        (length (constraints :: [(Double -> Double, Double)])) (1.0 :: Double) 
+        (length fs) (1.0 :: Double) 
     
     result = case unsafePerformIO (optimize defaultParameters 0.00001 guess 
                         (toFunction obj)

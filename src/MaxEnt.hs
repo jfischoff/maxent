@@ -31,12 +31,14 @@
 -- 
 module MaxEnt (
     Constraint,
+    ExpectationFunction,
     constraint,
     average,
     variance,
     maxent
 ) where
 import MaxEnt.Internal (Constraint,
+                        ExpectationFunction,
                         constraint,
                         average,
                         variance,

@@ -47,9 +47,21 @@ toGradient f = VGradient (U.fromList . grad f . U.toList)
 toDoubleF :: (forall a. Floating a => [a] -> a) -> [Double] -> Double
 toDoubleF f x = f x 
 
--- | Constraint type. Think of this as f and c in sum pi (f x) = c
+-- | Constraint type. A function and the constant it equals.
+-- 
+--   Think of it as the pair @(f, c)@ in the constraint 
+--
+-- @
+--     &#931; p&#8336; f(a, x&#8336;) = c
+-- @
+--
+--  such that we are summing over all values and @a@ is the index.
+--
+--  For example, for a variance constraint the @f@ would be @(\\_ x -> x*x)@ and @c@ would be the variance.
 type Constraint a = (ExpectationFunction a, a)
 
+-- | A function that takes an index and value and returns a value.
+--   See 'average' and 'variance' for examples.
 type ExpectationFunction a = (Int -> a -> a)
 
 -- make a constraint from function and constant

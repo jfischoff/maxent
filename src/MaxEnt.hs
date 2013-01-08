@@ -41,11 +41,13 @@ module MaxEnt (
     constraint,
     average,
     variance,
-    maxent
+    maxent,
+    maxentLinear
 ) where
 import MaxEnt.Internal (Constraint,
                         ExpectationFunction,
                         constraint,
                         average,
                         variance,
-                        maxent)
+                        maxent,
+                        maxentLinear)

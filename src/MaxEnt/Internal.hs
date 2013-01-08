@@ -190,9 +190,9 @@ generalMaxent params = result where
        
        
 
--- | The main entry point for computing discrete maximum entropy distributions.
---   Where the constraints are all moment constraints. 
-maxentLinear :: (forall a. Floating a => ([a], ([[a]], [a]))) -- ^ A pair of values that the distributions is over and the constraints
+-- | This is for the linear case Ax = b 
+--   x in this situatin is probabililies
+maxentLinear :: (forall a. Floating a => ([a], ([[a]], [a]))) -- ^ The values and a matrix A and column vector b
       -> Either (Result, Statistics) [Double] -- ^ Either the a discription of what wrong or the probability distribution 
 maxentLinear params = result where
    obj :: Floating a => [a] -> a

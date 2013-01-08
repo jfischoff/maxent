@@ -191,7 +191,19 @@ generalMaxent params = result where
        
 
 -- | This is for the linear case Ax = b 
---   x in this situatin is probabililies
+--   @x@ in this situation is the vector of probablities.
+--  
+--  For example.
+-- 
+-- @
+--   maxentLinear ([1,1,1], ([[0.85, 0.1, 0.05], [0.25, 0.5, 0.25], [0.05, 0.1, 0.85]], [0.29, 0.42, 0.29]))
+-- @
+--
+-- Right [0.1, 0.8, 0.1]
+-- 
+-- To be honest I am not sure why I can't use the 'maxent' version to solve
+-- this type of problem, but it doesn't work. I'm still learning
+-- 
 maxentLinear :: (forall a. Floating a => ([a], ([[a]], [a]))) -- ^ The values and a matrix A and column vector b
       -> Either (Result, Statistics) [Double] -- ^ Either the a discription of what wrong or the probability distribution 
 maxentLinear params = result where

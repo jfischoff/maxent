@@ -8,6 +8,7 @@ import GHC.IO                   (unsafePerformIO)
 import Data.Traversable
 import Numeric.AD.Types
 import Numeric.AD.Internal.Classes
+--import Numeric.AD.Lagrangian
 
 sumMap :: Num b => (a -> b) -> [a] -> b 
 sumMap f = sum . map f
@@ -82,40 +83,39 @@ linProbs matrix ls =
 entropy :: Floating a => [a] -> a
 entropy = negate . sumMap (\p -> p * log p) 
 
+
+-- This a functions that takes in a list of values and 
+-- a list of probabilities
 type GeneralConstraint a = [a] -> [a] -> a
 
+
 lagrangian :: Floating a
-             => [a] 
-             -> [GeneralConstraint a] 
-             -> [a] 
+             => ([a], [GeneralConstraint a], [a]) 
              -> [a] 
              -> a
-lagrangian values fs constants lamsAndProbs = result where
-    result = entropy ps + (sum $ zipWith (*) lams (sumsToOne ps : constraints))
+lagrangian (values, fs, constants) lamsAndProbs = result where
+    result = entropy ps + (sum $ zipWith (*) lams constraints)
     constraints        = zipWith (-) appliedConstraints constants
     appliedConstraints = map (\f -> f values ps) fs
-    
-    --This constraint is always needed for probability problems
-    sumsToOne xs = sumMap id xs - 1
-    
+        
     -- split the args list
     ps   = take (length values) lamsAndProbs
     lams = drop (length values) lamsAndProbs
 
 squaredGrad :: Num a 
             => (forall s. Mode s => [AD s a] -> AD s a) -> [a] -> a
-squaredGrad f vs = sumMap (\x -> x*x) . grad f $ vs
+squaredGrad f vs = sumMap (\x -> x*x) (grad f vs)
 
-{-                                  
-generalObjectiveFunc :: Floating a
-             => (forall b. Floating b => ([b],
-             [GeneralConstraint b] 
-             ,[b] 
-             ,[b])) 
+generalObjectiveFunc :: Floating a => (forall b. Floating b => 
+             ([b], [GeneralConstraint b], [b]))
+             -> [a] 
              -> a
-generalObjectiveFunc (values, fs, moments, lamsAndProbs) = 
-    squaredGrad (lagrangian values fs moments) $ lamsAndProbs where
--}
+generalObjectiveFunc params lamsAndProbs = 
+    squaredGrad lang lamsAndProbs  where
+        
+    lang :: Floating a => (forall s. Mode s => [AD s a] -> AD s a)
+    lang = lagrangian params
+
 
 toFunction :: (forall a. Floating a => [a] -> a) -> Function Simple
 toFunction f = VFunction (f . U.toList)
@@ -164,7 +164,7 @@ generalMaxent :: (forall a. Floating a => ([a], [(GeneralConstraint a, a)])) -- 
        -> Either (Result, Statistics) [Double] -- ^ Either the a discription of what wrong or the probability distribution
 generalMaxent params = result where
    obj :: Floating a => [a] -> a
-   obj = uncurry undefined fsmoments
+   obj = generalObjectiveFunc objInput
 
    values :: Floating a => [a]
    values = fst params
@@ -174,6 +174,24 @@ generalMaxent params = result where
 
    fsmoments :: Floating a => ([GeneralConstraint a], [a])
    fsmoments = unzip constraints 
+   
+   --The new constraint is always needed for probability problems
+   
+   sumToOne :: Floating a => GeneralConstraint a
+   sumToOne _ xs = sumMap id xs
+   
+   gcons' :: Floating a => [GeneralConstraint a]
+   gcons' = fst fsmoments
+   
+   gcons :: Floating a => [GeneralConstraint a]
+   gcons = sumToOne : gcons'
+   
+   moments :: Floating a => [a]
+   moments = 1 : snd fsmoments
+   
+   
+   objInput :: Floating b => ([b], [GeneralConstraint b], [b])
+   objInput = (values, gcons, moments)
 
    fs :: [[Double] -> [Double] -> Double]
    fs = fst fsmoments
@@ -183,9 +201,12 @@ generalMaxent params = result where
        (length fs) (1.0 :: Double) 
 
    result = case unsafePerformIO (optimize defaultParameters 0.00001 guess 
-                        undefined undefined
+                        (toFunction obj)
+                        (toGradient obj)
                        Nothing) of
-       (vs, ToleranceStatisfied, _) -> Right $ take (length values) (S.toList vs)
+       -- Not sure what is supposed to happen here
+       -- I guess I can plug the lambdas back in
+       (vs, ToleranceStatisfied, _) -> Right $  (S.toList vs)
        (_, x, y) -> Left (x, y)
        
        
@@ -265,7 +286,6 @@ maxent params = result where
         (vs, ToleranceStatisfied, _) -> Right $ probs values fs (S.toList vs)
         (_, x, y) -> Left (x, y)
 
---test = maxent ([1.0,2.0,3.0], [average 1.5])
 
 
     

@@ -8,6 +8,7 @@ import GHC.IO                   (unsafePerformIO)
 import Data.Traversable
 import Numeric.AD.Types
 import Numeric.AD.Internal.Classes
+import Data.List (transpose)
 --import Numeric.AD.Lagrangian
 
 sumMap :: Num b => (a -> b) -> [a] -> b 
@@ -54,21 +55,20 @@ objectiveFunc values fs moments ls = log (partitionFunc values fs ls)
 dot :: Num a => [a] -> [a] -> a
 dot x y = sum . zipWith (*) x $ y
 
+-- have the column and rows backwards
 partitionFuncLinear :: Floating a
              => [[a]]
              -> [a] 
              -> a
-partitionFuncLinear matrix ws = sum $ [ exp (dot as ws) | 
-                               as <- matrix]
+partitionFuncLinear matrix ws = sum $ [ exp (dot as ws) | as <- transpose matrix]
 
 -- This is almost the sam as the objectiveFunc                                   
 objectiveFuncLinear :: Floating a
-             => [a] 
-             -> [[a]] 
+             => [[a]] 
              -> [a] 
              -> [a] 
              -> a
-objectiveFuncLinear values as moments ls = 
+objectiveFuncLinear as moments ls = 
     log (partitionFuncLinear as ls) - dot ls moments
 
 
@@ -78,7 +78,6 @@ linProbs :: (Floating b)
       -> [b]    
 linProbs matrix ls = 
     map (pOfKLinear matrix ls) [0..length matrix - 1]
-
 
 entropy :: Floating a => [a] -> a
 entropy = negate . sumMap (\p -> p * log p) 
@@ -126,22 +125,7 @@ toGradient f = VGradient (U.fromList . grad f . U.toList)
 toDoubleF :: (forall a. Floating a => [a] -> a) -> [Double] -> Double
 toDoubleF f x = f x 
 
--- | Constraint type. A function and the constant it equals.
--- 
---   Think of it as the pair @(f, c)@ in the constraint 
---
--- @
---     &#931; p&#8336; f(x&#8336;) = c
--- @
---
---  such that we are summing over all values .
---
---  For example, for a variance constraint the @f@ would be @(\\x -> x*x)@ and @c@ would be the variance.
-type Constraint a = (ExpectationFunction a, a)
 
--- | A function that takes an index and value and returns a value.
---   See 'average' and 'variance' for examples.
-type ExpectationFunction a = (a -> a)
 
 -- make a constraint from function and constant
 constraint :: Floating a => ExpectationFunction a -> a -> Constraint a
@@ -217,7 +201,7 @@ generalMaxent params = result where
 --  For example.
 -- 
 -- @
---   maxentLinear ([1,1,1], ([[0.85, 0.1, 0.05], [0.25, 0.5, 0.25], [0.05, 0.1, 0.85]], [0.29, 0.42, 0.29]))
+--   maxentLinear ([[0.85, 0.1, 0.05], [0.25, 0.5, 0.25], [0.05, 0.1, 0.85]], [0.29, 0.42, 0.29])
 -- @
 --
 -- Right [0.1, 0.8, 0.1]
@@ -225,35 +209,44 @@ generalMaxent params = result where
 -- To be honest I am not sure why I can't use the 'maxent' version to solve
 -- this type of problem, but it doesn't work. I'm still learning
 -- 
-maxentLinear :: (forall a. Floating a => ([a], ([[a]], [a]))) -- ^ The values and a matrix A and column vector b
+maxentLinear :: (forall a. Floating a => ([[a]], [a])) -- ^ a matrix A and column vector b
       -> Either (Result, Statistics) [Double] -- ^ Either the a discription of what wrong or the probability distribution 
 maxentLinear params = result where
    obj :: Floating a => [a] -> a
-   obj = uncurry (objectiveFuncLinear values) fsmoments
-
-   values :: Floating a => [a]
-   values = fst params
-
-   constraints :: Floating a => ([[a]], [a])
-   constraints = snd params
-
-   fsmoments :: Floating a => ([[a]], [a])
-   fsmoments = constraints 
+   obj = uncurry objectiveFuncLinear params 
 
    fs :: [[Double]]
-   fs = fst fsmoments
+   fs = fst params
 
    -- hmm maybe there is a better way to get rid of the defaulting
    guess = U.fromList $ replicate 
-       (length fs) (2.0 :: Double) 
+       (length fs) ((1.0 :: Double) / (fromIntegral $ length fs)) 
 
-   result = case unsafePerformIO (optimize defaultParameters 0.00001 guess 
+   result = case unsafePerformIO (optimize (defaultParameters { printFinal = False } )
+                       0.05 guess 
                        (toFunction obj)
                        (toGradient obj)
                        Nothing) of
        (vs, ToleranceStatisfied, _) -> Right $ linProbs fs (S.toList vs)
        (_, x, y) -> Left (x, y)
 
+
+-- | Constraint type. A function and the constant it equals.
+-- 
+--   Think of it as the pair @(f, c)@ in the constraint 
+--
+-- @
+--     &#931; p&#8336; f(x&#8336;) = c
+-- @
+--
+--  such that we are summing over all values .
+--
+--  For example, for a variance constraint the @f@ would be @(\\x -> x*x)@ and @c@ would be the variance.
+type Constraint a = (ExpectationFunction a, a)
+
+-- | A function that takes an index and value and returns a value.
+--   See 'average' and 'variance' for examples.
+type ExpectationFunction a = (a -> a)
 
 -- | The main entry point for computing discrete maximum entropy distributions.
 --   Where the constraints are all moment constraints. 
@@ -279,7 +272,8 @@ maxent params = result where
     guess = U.fromList $ replicate 
         (length fs) (1.0 :: Double) 
     
-    result = case unsafePerformIO (optimize defaultParameters 0.00001 guess 
+    result = case unsafePerformIO (optimize (defaultParameters { printFinal = False }) 
+                        0.001 guess 
                         (toFunction obj)
                         (toGradient obj)
                         Nothing) of

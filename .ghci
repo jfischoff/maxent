@@ -1,2 +1,2 @@
 :set -i./src -i./tests
-:load tests/LinearTesting.hs
+:load tests/Main.hs

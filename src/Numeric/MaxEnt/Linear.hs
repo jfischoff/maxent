@@ -26,7 +26,7 @@ partitionFunc matrix ws = sum $ [ exp (dot as ws) | as <- transpose matrix]
 objectiveFunc :: RealFloat a => [[a]] -> [a]-> [a] -> a
 objectiveFunc as moments ls = log (partitionFunc as ls) - dot ls moments
 
-data LinearConstraints a = LinearConstraints {
+data LinearConstraints a = LC {
         matrix :: [[a]], 
         output :: [a]
     }
@@ -35,29 +35,33 @@ data LinearConstraints a = LinearConstraints {
 -- | This is for the linear case Ax = b 
 --   @x@ in this situation is the vector of probablities.
 --  
---  For example.
+--  Consider the 1 dimensional circular convolution using hmatrix.
+--  
+--  >>> import Numeric.LinearAlgebra
+--  >>> fromLists [[0.68, 0.22, 0.1], [0.1, 0.68, 0.22], [0.22, 0.1, 0.68]] <> fromLists [[0.2], [0.5], [0.3]]
+--  (3><1) [0.276, 0.426, 0.298]   
 -- 
--- @
---   maxentLinear ([[0.85, 0.1, 0.05], [0.25, 0.5, 0.25], [0.05, 0.1, 0.85]], [0.29, 0.42, 0.29])
--- @
+--   Now if we were given just the convolution and the output, we can use 'linear' to infer the input.
+-- 
+--   >>> linear 3.0e-17 $ LC [[0.68, 0.22, 0.1], [0.1, 0.68, 0.22], [0.22, 0.1, 0.68]] [0.276, 0.426, 0.298]
+--   Right [0.20000000000000004,0.4999999999999999,0.3]
+-- 
 --
--- Right [0.1, 0.8, 0.1]
 -- 
--- To be honest I am not sure why I can't use the 'maxent' version to solve
--- this type of problem, but it doesn't work. I'm still learning
 -- 
-linear :: Double -> (forall a. RealFloat a => LinearConstraints a) -- ^ a matrix A and column vector b
+linear :: Double -- ^ Tolerance for the numerical solver
+      -> (forall a. RealFloat a => LinearConstraints a) -- ^ The matrix A and column vector b
       -> Either (Result, Statistics) [Double] -- ^ Either the a discription of what wrong or the probability distribution 
-linear precision constraints = result where
+linear tolerance constraints = result where
    obj :: RealFloat a => [a] -> a
    obj = objectiveFunc (matrix constraints) (output constraints) 
-   --obj = squaredGrad $ objectiveFunc (matrix constraints) (output constraints) 
 
    as :: [[Double]]
    as = matrix constraints
    
-   result = probs as <$> solve precision (length as) obj
+   result = probs as <$> solve tolerance (length as) obj
    
+--Just for testing   
 linear1 :: Double -> (forall a. RealFloat a => LinearConstraints a) -- ^ a matrix A and column vector b
      -> Either (Result, Statistics) [Double] -- ^ Either the a discription of what wrong or the probability distribution 
 linear1 precision constraints = result where
@@ -78,7 +82,6 @@ linear1 precision constraints = result where
 {-
     I need to clean this up and submit it
     submit the sharpen
-    
     
     I need to figure out how to make linear2 
     what is the 

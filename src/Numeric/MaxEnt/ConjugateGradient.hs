@@ -42,7 +42,7 @@ solve percision count obj = result where
       guess = U.fromList $ replicate 
           count ((1.0 :: Double) / (fromIntegral count))
      
-      result = case unsafePerformIO (optimize defaultParameters percision guess 
+      result = case unsafePerformIO (optimize (defaultParameters { printFinal = False }) percision guess 
                              (toFunction obj)
                              (toGradient obj)
                              Nothing) of

@@ -43,13 +43,6 @@ objectiveFunc :: RealFloat a
 objectiveFunc values fs moments ls = log (partitionFunc values fs ls) 
                                    + sumWith (*) ls moments
 
-
-
-
-
-
-
-
 entropy :: RealFloat a => [a] -> a
 entropy = negate . sumMap (\p -> p * log p) 
 
@@ -71,8 +64,6 @@ lagrangian (values, fs, constants) lamsAndProbs = result where
     -- split the args list
     ps   = take (length values) lamsAndProbs
     lams = drop (length values) lamsAndProbs
-
-
 
 generalObjectiveFunc :: RealFloat a => (forall b. RealFloat b => 
              ([b], [GeneralConstraint b], [b]))
@@ -100,9 +91,7 @@ variance :: RealFloat a => a -> Constraint a
 variance sigma = constraint (^(2 :: Int)) sigma
 
 -- | Most general solver
---   This will solve the langrangian by added the constraint that the 
---   probabilities must add up to zero.
---   This is the slowest but most flexible method. 
+--   This is the slowest but most flexible method. Although, I haven't tried using much...
 
 generalMaxent :: (forall a. RealFloat a => ([a], [(GeneralConstraint a, a)])) -- ^ A pair of values that the distributions is over and the constraints
        -> Either (Result, Statistics) [Double] -- ^ Either the a discription of what wrong or the probability distribution
@@ -171,8 +160,7 @@ type Constraint a = (ExpectationFunction a, a)
 --   See 'average' and 'variance' for examples.
 type ExpectationFunction a = (a -> a)
 
--- | The main entry point for computing discrete maximum entropy distributions.
---   Where the constraints are all moment constraints. 
+-- | Discrete maximum entropy solver where the constraints are all moment constraints. 
 maxent :: (forall a. RealFloat a => ([a], [Constraint a])) -- ^ A pair of values that the distributions is over and the constraints
        -> Either (Result, Statistics) [Double] -- ^ Either the a discription of what wrong or the probability distribution 
 maxent params = result where

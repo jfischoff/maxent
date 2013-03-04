@@ -78,7 +78,7 @@ instance Arbitrary (ValidLinearConstraints Double) where
         unnormalizedProbs <- vectorOf size (suchThat arbitrary (>0.0))
         
         let probs       = normalize unnormalizedProbs
-            matrix'     = map normalize matrix
+            matrix'     = traceIt $ map normalize matrix
             hmatrix     = M.fromLists matrix'
             hprobs      = M.fromLists $ transpose [probs]
             inputVector = hmatrix `multiply` hprobs
@@ -87,13 +87,13 @@ instance Arbitrary (ValidLinearConstraints Double) where
         
 
 toPoly :: RealFloat a => LinearConstraints Double -> LinearConstraints a
-toPoly (LinearConstraints x y) =
-     LinearConstraints (map (map (fromRational . toRational)) x) 
+toPoly (LC x y) =
+     LC (map (map (fromRational . toRational)) x) 
                         (map (fromRational . toRational) y)
 
 solvableSystemsAreSolvable :: ValidLinearConstraints Double -> Bool
 solvableSystemsAreSolvable (ValidLinearConstraints x y) = 
-    case linear 0.0000005 (toPoly $ LinearConstraints x y) of
+    case linear 0.0000005 (toPoly $ LC x y) of
         Right _ -> True
         Left  _ -> False
       
@@ -101,7 +101,7 @@ traceItNote msg x = trace (msg ++ " " ++ show x) x
 
 probsSumToOne :: ValidLinearConstraints Double -> Bool
 probsSumToOne (ValidLinearConstraints x y) = 
-    case linear 0.000005 (toPoly $ LinearConstraints x y) of
+    case linear 0.000005 (toPoly $ LC x y) of
         Right ps -> case 1.0 =~= sum ps of
             True -> True
             False -> trace ("new probs" ++ show ps) False
@@ -109,7 +109,7 @@ probsSumToOne (ValidLinearConstraints x y) =
         
 solutionFitsConstraints :: ValidLinearConstraints Double -> Bool
 solutionFitsConstraints (ValidLinearConstraints x y) = 
-    case linear 0.000005 (toPoly $ LinearConstraints x y) of
+    case linear 0.000005 (toPoly $ LC x y) of
         Right ps -> result where
             result = ((map head) . M.toLists $ inputVector) =~= y
     
@@ -125,7 +125,7 @@ solutionFitsConstraints (ValidLinearConstraints x y) =
 -- have less then or equal to the estimated
 entropyIsGreaterOrEqual :: ValidLinearConstraints Double -> Bool
 entropyIsGreaterOrEqual (ValidLinearConstraints x y) = 
-    case linear 0.000005 (toPoly $ LinearConstraints x y) of
+    case linear 0.000005 (toPoly $ LC x y) of
         Right ps -> result where
             entropy xs = negate . sum . map (\x -> x * log x) $ xs
             
@@ -141,7 +141,7 @@ entropyIsGreaterOrEqual (ValidLinearConstraints x y) =
 -- TODO make this
 entropyIsMaximum :: ValidLinearConstraints Double -> Bool
 entropyIsMaximum (ValidLinearConstraints x y) = 
-    case linear 0.000005 (toPoly $ LinearConstraints x y) of
+    case linear 0.000005 (toPoly $ LC x y) of
         Right ps -> result where
             entropy xs = negate . sum . map (\x -> x * log x) $ xs
             

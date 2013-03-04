@@ -9,7 +9,7 @@ import LinearTesting
 -- guassian and then infered with a gaussian should have less entropy then it
 -- started with
 
-main = defaultMainWithOptions [
+main = defaultMain [
         testGroup "Linear Tests" [
             testProperty "solvableSystemsAreSolvable" solvableSystemsAreSolvable,
             testProperty "probsSumToOne" probsSumToOne,

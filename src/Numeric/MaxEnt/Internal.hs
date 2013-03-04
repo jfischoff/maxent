@@ -1,5 +1,5 @@
 {-# LANGUAGE TupleSections, Rank2Types #-}
-module MaxEnt.Internal where
+module Numeric.MaxEnt.Internal where
 import Numeric.Optimization.Algorithms.HagerZhang05
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Storable as S
@@ -10,30 +10,22 @@ import Numeric.AD.Types
 import Numeric.AD.Internal.Classes
 import Data.List (transpose)
 --import Numeric.AD.Lagrangian
+import Numeric.MaxEnt.ConjugateGradient
 
-sumMap :: Num b => (a -> b) -> [a] -> b 
-sumMap f = sum . map f
-
-sumWith :: Num c => (a -> b -> c) -> [a] -> [b] -> c 
-sumWith f xs = sum . zipWith f xs
-
-pOfK :: Floating a => [a] -> [ExpectationFunction a] -> [a] -> Int -> a
+pOfK :: RealFloat a => [a] -> [ExpectationFunction a] -> [a] -> Int -> a
 pOfK values fs ls k = exp (negate . sumWith (\l f -> l * f (values !! k)) ls $ fs) / 
     partitionFunc values fs ls 
 
-pOfKLinear :: Floating a => [[a]] -> [a] -> Int -> a
-pOfKLinear matrix ls k = 
-    exp (dot (matrix !! k) ls) / 
-        partitionFuncLinear matrix ls
 
-probs :: (Floating b)
+
+probs :: (RealFloat b)
       => [b] 
       -> [ExpectationFunction b] 
       -> [b] 
       -> [b]    
 probs values fs ls = map (pOfK values fs ls) [0..length values - 1] 
 
-partitionFunc :: Floating a
+partitionFunc :: RealFloat a
               => [a] 
               -> [ExpectationFunction a]
               -> [a] 
@@ -42,7 +34,7 @@ partitionFunc values fs ls = sum $ [ exp ((-l) * f x) |
                                 x <- values, 
                                 (f, l) <- zip fs ls]
 
-objectiveFunc :: Floating a
+objectiveFunc :: RealFloat a
               => [a] 
               -> [ExpectationFunction a] 
               -> [a] 
@@ -52,34 +44,13 @@ objectiveFunc values fs moments ls = log (partitionFunc values fs ls)
                                    + sumWith (*) ls moments
 
 
-dot :: Num a => [a] -> [a] -> a
-dot x y = sum . zipWith (*) x $ y
-
--- have the column and rows backwards
-partitionFuncLinear :: Floating a
-             => [[a]]
-             -> [a] 
-             -> a
-partitionFuncLinear matrix ws = sum $ [ exp (dot as ws) | as <- transpose matrix]
-
--- This is almost the sam as the objectiveFunc                                   
-objectiveFuncLinear :: Floating a
-             => [[a]] 
-             -> [a] 
-             -> [a] 
-             -> a
-objectiveFuncLinear as moments ls = 
-    log (partitionFuncLinear as ls) - dot ls moments
 
 
-linProbs :: (Floating b)
-      => [[b]] 
-      -> [b] 
-      -> [b]    
-linProbs matrix ls = 
-    map (pOfKLinear matrix ls) [0..length matrix - 1]
 
-entropy :: Floating a => [a] -> a
+
+
+
+entropy :: RealFloat a => [a] -> a
 entropy = negate . sumMap (\p -> p * log p) 
 
 
@@ -88,7 +59,7 @@ entropy = negate . sumMap (\p -> p * log p)
 type GeneralConstraint a = [a] -> [a] -> a
 
 
-lagrangian :: Floating a
+lagrangian :: RealFloat a
              => ([a], [GeneralConstraint a], [a]) 
              -> [a] 
              -> a
@@ -101,42 +72,31 @@ lagrangian (values, fs, constants) lamsAndProbs = result where
     ps   = take (length values) lamsAndProbs
     lams = drop (length values) lamsAndProbs
 
-squaredGrad :: Num a 
-            => (forall s. Mode s => [AD s a] -> AD s a) -> [a] -> a
-squaredGrad f vs = sumMap (\x -> x*x) (grad f vs)
 
-generalObjectiveFunc :: Floating a => (forall b. Floating b => 
+
+generalObjectiveFunc :: RealFloat a => (forall b. RealFloat b => 
              ([b], [GeneralConstraint b], [b]))
              -> [a] 
              -> a
 generalObjectiveFunc params lamsAndProbs = 
     squaredGrad lang lamsAndProbs  where
         
-    lang :: Floating a => (forall s. Mode s => [AD s a] -> AD s a)
+    lang :: RealFloat a => (forall s. Mode s => [AD s a] -> AD s a)
     lang = lagrangian params
 
-
-toFunction :: (forall a. Floating a => [a] -> a) -> Function Simple
-toFunction f = VFunction (f . U.toList)
-
-toGradient :: (forall a. Floating a => [a] -> a) -> Gradient Simple
-toGradient f = VGradient (U.fromList . grad f . U.toList)
-
-toDoubleF :: (forall a. Floating a => [a] -> a) -> [Double] -> Double
-toDoubleF f x = f x 
 
 
 
 -- make a constraint from function and constant
-constraint :: Floating a => ExpectationFunction a -> a -> Constraint a
+constraint :: RealFloat a => ExpectationFunction a -> a -> Constraint a
 constraint = (,)
 
 -- The average constraint
-average :: Floating a => a -> Constraint a
+average :: RealFloat a => a -> Constraint a
 average m = constraint id m
 
 -- The variance constraint
-variance :: Floating a => a -> Constraint a
+variance :: RealFloat a => a -> Constraint a
 variance sigma = constraint (^(2 :: Int)) sigma
 
 -- | Most general solver
@@ -144,37 +104,37 @@ variance sigma = constraint (^(2 :: Int)) sigma
 --   probabilities must add up to zero.
 --   This is the slowest but most flexible method. 
 
-generalMaxent :: (forall a. Floating a => ([a], [(GeneralConstraint a, a)])) -- ^ A pair of values that the distributions is over and the constraints
+generalMaxent :: (forall a. RealFloat a => ([a], [(GeneralConstraint a, a)])) -- ^ A pair of values that the distributions is over and the constraints
        -> Either (Result, Statistics) [Double] -- ^ Either the a discription of what wrong or the probability distribution
 generalMaxent params = result where
-   obj :: Floating a => [a] -> a
+   obj :: RealFloat a => [a] -> a
    obj = generalObjectiveFunc objInput
 
-   values :: Floating a => [a]
+   values :: RealFloat a => [a]
    values = fst params
 
-   constraints :: Floating a => [(GeneralConstraint a, a)]
+   constraints :: RealFloat a => [(GeneralConstraint a, a)]
    constraints = snd params
 
-   fsmoments :: Floating a => ([GeneralConstraint a], [a])
+   fsmoments :: RealFloat a => ([GeneralConstraint a], [a])
    fsmoments = unzip constraints 
    
    --The new constraint is always needed for probability problems
    
-   sumToOne :: Floating a => GeneralConstraint a
+   sumToOne :: RealFloat a => GeneralConstraint a
    sumToOne _ xs = sumMap id xs
    
-   gcons' :: Floating a => [GeneralConstraint a]
+   gcons' :: RealFloat a => [GeneralConstraint a]
    gcons' = fst fsmoments
    
-   gcons :: Floating a => [GeneralConstraint a]
+   gcons :: RealFloat a => [GeneralConstraint a]
    gcons = sumToOne : gcons'
    
-   moments :: Floating a => [a]
+   moments :: RealFloat a => [a]
    moments = 1 : snd fsmoments
    
    
-   objInput :: Floating b => ([b], [GeneralConstraint b], [b])
+   objInput :: RealFloat b => ([b], [GeneralConstraint b], [b])
    objInput = (values, gcons, moments)
 
    fs :: [[Double] -> [Double] -> Double]
@@ -194,43 +154,6 @@ generalMaxent params = result where
        (_, x, y) -> Left (x, y)
        
        
-
--- | This is for the linear case Ax = b 
---   @x@ in this situation is the vector of probablities.
---  
---  For example.
--- 
--- @
---   maxentLinear ([[0.85, 0.1, 0.05], [0.25, 0.5, 0.25], [0.05, 0.1, 0.85]], [0.29, 0.42, 0.29])
--- @
---
--- Right [0.1, 0.8, 0.1]
--- 
--- To be honest I am not sure why I can't use the 'maxent' version to solve
--- this type of problem, but it doesn't work. I'm still learning
--- 
-maxentLinear :: (forall a. Floating a => ([[a]], [a])) -- ^ a matrix A and column vector b
-      -> Either (Result, Statistics) [Double] -- ^ Either the a discription of what wrong or the probability distribution 
-maxentLinear params = result where
-   obj :: Floating a => [a] -> a
-   obj = uncurry objectiveFuncLinear params 
-
-   fs :: [[Double]]
-   fs = fst params
-
-   -- hmm maybe there is a better way to get rid of the defaulting
-   guess = U.fromList $ replicate 
-       (length fs) ((1.0 :: Double) / (fromIntegral $ length fs)) 
-
-   result = case unsafePerformIO (optimize (defaultParameters { printFinal = False } )
-                       0.05 guess 
-                       (toFunction obj)
-                       (toGradient obj)
-                       Nothing) of
-       (vs, ToleranceStatisfied, _) -> Right $ linProbs fs (S.toList vs)
-       (_, x, y) -> Left (x, y)
-
-
 -- | Constraint type. A function and the constant it equals.
 -- 
 --   Think of it as the pair @(f, c)@ in the constraint 
@@ -250,19 +173,19 @@ type ExpectationFunction a = (a -> a)
 
 -- | The main entry point for computing discrete maximum entropy distributions.
 --   Where the constraints are all moment constraints. 
-maxent :: (forall a. Floating a => ([a], [Constraint a])) -- ^ A pair of values that the distributions is over and the constraints
+maxent :: (forall a. RealFloat a => ([a], [Constraint a])) -- ^ A pair of values that the distributions is over and the constraints
        -> Either (Result, Statistics) [Double] -- ^ Either the a discription of what wrong or the probability distribution 
 maxent params = result where
-    obj :: Floating a => [a] -> a
+    obj :: RealFloat a => [a] -> a
     obj = uncurry (objectiveFunc values) fsmoments
     
-    values :: Floating a => [a]
+    values :: RealFloat a => [a]
     values = fst params
     
-    constraints :: Floating a => [(ExpectationFunction a, a)]
+    constraints :: RealFloat a => [(ExpectationFunction a, a)]
     constraints = snd params
     
-    fsmoments :: Floating a => ([ExpectationFunction a], [a])
+    fsmoments :: RealFloat a => ([ExpectationFunction a], [a])
     fsmoments = unzip constraints 
     
     fs :: [Double -> Double]
@@ -271,6 +194,16 @@ maxent params = result where
     -- hmm maybe there is a better way to get rid of the defaulting
     guess = U.fromList $ replicate 
         (length fs) (1.0 :: Double) 
+    
+    {-
+    result = case unsafePerformIO (optimize (defaultParameters { printFinal = False }) 
+                        0.001 guess 
+                        (toFunction obj)
+                        (toGradient obj)
+                        Nothing) of
+        (vs, ToleranceStatisfied, _) -> Right $ probs values fs (S.toList vs)
+        (_, x, y) -> Left (x, y)
+    -}
     
     result = case unsafePerformIO (optimize (defaultParameters { printFinal = False }) 
                         0.001 guess 

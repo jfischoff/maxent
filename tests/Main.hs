@@ -2,6 +2,17 @@ module Main where
 import Test.Framework (defaultMain, testGroup, defaultMainWithArgs)
 import Test.Framework.Providers.HUnit
 import Test.Framework.Providers.QuickCheck2 (testProperty)
-import MaxEnt
+import Numeric.MaxEnt
+import LinearTesting
 
-main = defaultMain [] 
+-- One test is that a list convolved with a 
+-- guassian and then infered with a gaussian should have less entropy then it
+-- started with
+
+main = defaultMainWithOptions [
+        testGroup "Linear Tests" [
+            testProperty "solvableSystemsAreSolvable" solvableSystemsAreSolvable,
+            testProperty "probsSumToOne" probsSumToOne,
+            testProperty "solutionFitsConstraints" solutionFitsConstraints   
+        ]
+    ] 

@@ -35,21 +35,27 @@
 -- it is a kin to choosing a integer partition with the most interger compositions. 
 -- I doubt that makes any sense, but I will try to explain more with a blog post soon.
 -- 
-module MaxEnt (
+module Numeric.MaxEnt (
     Constraint,
     ExpectationFunction,
     constraint,
     average,
     variance,
     maxent,
-    maxentLinear,
-    generalMaxent
+    linear,
+    generalMaxent, 
+    LinearConstraints(..)
 ) where
-import MaxEnt.Internal (Constraint,
+import Numeric.MaxEnt.Internal (Constraint,
                         ExpectationFunction,
                         constraint,
                         average,
                         variance,
                         maxent,
-                        maxentLinear,
                         generalMaxent)
+import Numeric.MaxEnt.Linear (linear, LinearConstraints(..))
+
+
+
+
+

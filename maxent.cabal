@@ -77,7 +77,9 @@ library
   -- Modules included in this library but not exported.
   other-modules:     Numeric.MaxEnt.Internal, 
                      Numeric.MaxEnt.Linear, 
-                     Numeric.MaxEnt.ConjugateGradient 
+                     Numeric.MaxEnt.ConjugateGradient,
+                     Numeric.MaxEnt.Moment,
+                     Numeric.MaxEnt.General  
   
   -- Other library packages from which modules are imported.
   build-depends: base ==4.6.*,

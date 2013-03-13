@@ -15,6 +15,8 @@ import qualified Data.Packed.Matrix as M
 import Numeric.LinearAlgebra
 import Numeric
 import Debug.Trace
+import qualified Data.Vector.Storable as S
+import Foreign.Storable
 
 class Approximate a where
     (=~=) :: a -> a -> Bool
@@ -53,6 +55,9 @@ instance Approximate Double where
 instance Approximate a => Approximate [a] where
     xs =~= ys = all id . zipWith (=~=) xs $ ys
     
+instance (Approximate a, Storable a) => Approximate (S.Vector a) where
+    xs =~= ys = S.all id . S.zipWith (=~=) xs $ ys
+    
 instance Approximate (ValidLinearConstraints Double) where
     (ValidLinearConstraints mx ox) =~= (ValidLinearConstraints my oy) =
         mx =~= my && ox =~= oy
@@ -78,7 +83,7 @@ instance Arbitrary (ValidLinearConstraints Double) where
         unnormalizedProbs <- vectorOf size (suchThat arbitrary (>0.0))
         
         let probs       = normalize unnormalizedProbs
-            matrix'     = traceIt $ map normalize matrix
+            matrix'     = map normalize matrix
             hmatrix     = M.fromLists matrix'
             hprobs      = M.fromLists $ transpose [probs]
             inputVector = hmatrix `multiply` hprobs
@@ -102,7 +107,7 @@ traceItNote msg x = trace (msg ++ " " ++ show x) x
 probsSumToOne :: ValidLinearConstraints Double -> Bool
 probsSumToOne (ValidLinearConstraints x y) = 
     case linear 0.000005 (toPoly $ LC x y) of
-        Right ps -> case 1.0 =~= sum ps of
+        Right ps -> case 1.0 =~= S.sum ps of
             True -> True
             False -> trace ("new probs" ++ show ps) False
         Left _   -> False
@@ -114,8 +119,8 @@ solutionFitsConstraints (ValidLinearConstraints x y) =
             result = ((map head) . M.toLists $ inputVector) =~= y
     
             hmatrix     = M.fromLists x
-            hprobs      = M.fromLists $ transpose [traceItNote "ps" ps]
-            inputVector = traceItNote "inputVector" $ hmatrix `multiply` hprobs
+            hprobs      = M.fromLists $ transpose [S.toList ps]
+            inputVector = hmatrix `multiply` hprobs
             
             
         Left _   -> False
@@ -130,7 +135,7 @@ entropyIsGreaterOrEqual (ValidLinearConstraints x y) =
             entropy xs = negate . sum . map (\x -> x * log x) $ xs
             
             yEntropy         = entropy y
-            estimatedEntropy = entropy ps
+            estimatedEntropy = entropy $ S.toList ps
             
             result = yEntropy >= estimatedEntropy
         Left  _  -> error "failed!"
@@ -146,7 +151,7 @@ entropyIsMaximum (ValidLinearConstraints x y) =
             entropy xs = negate . sum . map (\x -> x * log x) $ xs
             
             yEntropy         = entropy y
-            estimatedEntropy = entropy ps
+            estimatedEntropy = entropy $ S.toList ps
             
             result = yEntropy >= estimatedEntropy
         Left  _  -> error "failed!"

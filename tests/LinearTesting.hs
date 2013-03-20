@@ -120,7 +120,7 @@ solutionFitsConstraints (ValidLinearConstraints x y) =
     
             hmatrix     = M.fromLists x
             hprobs      = M.fromLists $ transpose [S.toList ps]
-            inputVector = hmatrix `multiply` hprobs
+            inputVector = hmatrix <> hprobs
             
             
         Left _   -> False
@@ -161,6 +161,8 @@ entropyIsMaximum (ValidLinearConstraints x y) =
 -- should not lower the entropy
 -- 
 
+     
+    
 
 --main = quickCheck probsSumToOne
 

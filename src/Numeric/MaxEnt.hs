@@ -44,6 +44,8 @@ module Numeric.MaxEnt (
     -- ** Linear
     LinearConstraints(..),
     linear,
+    linear',
+    linear''
 ) where
 import Numeric.MaxEnt.Internal (Constraint,
                         (.=.),
@@ -54,7 +56,9 @@ import Numeric.MaxEnt.Internal (Constraint,
                         variance,
                         maxent,
                         general,
-                        linear, 
+                        linear,
+                        linear',
+                        linear'',
                         LinearConstraints(..))
 
 

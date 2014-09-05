@@ -82,7 +82,7 @@ library
                      Numeric.MaxEnt.General  
   
   -- Other library packages from which modules are imported.
-  build-depends: base ==4.6.*,
+  build-depends: base >=4.5 && < 5,
                  nonlinear-optimization ==0.3.*,
                  vector ==0.10.*, 
                  ad ==3.4.*,
@@ -96,7 +96,7 @@ Test-Suite tests
   hs-source-dirs:      src, tests
   type:       exitcode-stdio-1.0
   main-is:    Main.hs
-  build-depends: base ==4.6.*,
+  build-depends: base >=4.5 && < 5,
                  nonlinear-optimization ==0.3.*,
                  vector ==0.10.*, 
                  ad ==3.4.*,

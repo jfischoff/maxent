@@ -10,7 +10,7 @@ name:                maxent
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             0.6.0.3
+version:             0.7
 
 -- A short (one-line) description of the package.
 synopsis:            Compute Maximum Entropy Distributions
@@ -71,22 +71,23 @@ cabal-version:       >=1.12
 
 
 library
+  ghc-options: -Wall
   -- Modules exported by the library.
   exposed-modules:     Numeric.MaxEnt
   
   -- Modules included in this library but not exported.
-  other-modules:     Numeric.MaxEnt.Internal, 
-                     Numeric.MaxEnt.Linear, 
-                     Numeric.MaxEnt.ConjugateGradient,
+  other-modules:     Numeric.MaxEnt.Internal,
+                     Numeric.MaxEnt.Linear,
+                     Numeric.MaxEnt.ConjugateGradient
                      Numeric.MaxEnt.Moment,
                      Numeric.MaxEnt.General  
   
   -- Other library packages from which modules are imported.
   build-depends: base >=4.5 && < 5,
-                 nonlinear-optimization ==0.3.*,
-                 vector ==0.10.*, 
-                 ad ==3.4.*,
-                 lagrangian == 0.5.*
+                 nonlinear-optimization == 0.3.*,
+                 vector == 0.10.*, 
+                 ad >= 4 && < 5,
+                 lagrangian == 0.6.*
   
   -- Directories containing source files.
   hs-source-dirs:      src
@@ -99,13 +100,13 @@ Test-Suite tests
   build-depends: base >=4.5 && < 5,
                  nonlinear-optimization ==0.3.*,
                  vector ==0.10.*, 
-                 ad ==3.4.*,
-                 hmatrix ==0.14.*,
-                 lagrangian == 0.5.*,
+                 ad >= 4 && < 5,
+                 hmatrix >= 0.14 && < 0.17,
+                 lagrangian == 0.6.*,
                  QuickCheck == 2.5.*,
-                 test-framework-quickcheck2 ==0.3.*,
-                 test-framework-quickcheck2 ==0.3.*,
-                 test-framework-hunit ==0.3.*,
+                 test-framework-quickcheck2 == 0.3.*,
+                 test-framework-quickcheck2 == 0.3.*,
+                 test-framework-hunit == 0.3.*,
                  test-framework == 0.8.*
                     
   default-language: Haskell2010
@@ -115,13 +116,10 @@ Benchmark bench
   hs-source-dirs:      src, bench
   type:       exitcode-stdio-1.0
   main-is:    Bench.hs
-  build-depends: base ==4.6.*,
-                 nonlinear-optimization ==0.3.*,
-                 vector ==0.10.*, 
-                 ad ==3.4.*,
-                 hmatrix ==0.14.*,
-                 lagrangian == 0.5.*,
+  build-depends: base == 4.6.*,
+                 nonlinear-optimization == 0.3.*,
+                 vector == 0.10.*, 
+                 ad >= 4 && <= 5,
+                 hmatrix >= 0.14 && < 0.17,
+                 lagrangian == 0.6.*,
                  criterion == 0.6.*
-
-
-  

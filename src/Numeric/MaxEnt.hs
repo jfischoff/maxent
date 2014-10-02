@@ -32,9 +32,7 @@
 module Numeric.MaxEnt (
     Constraint,
     (.=.),
-    UU(..),
     ExpectationConstraint,
-    ExpectationFunction,
     average,
     variance,
     -- ** Classic moment based
@@ -47,11 +45,10 @@ module Numeric.MaxEnt (
     linear',
     linear''
 ) where
+
 import Numeric.MaxEnt.Internal (Constraint,
                         (.=.),
-                        UU(..),
                         ExpectationConstraint,
-                        ExpectationFunction,
                         average,
                         variance,
                         maxent,
@@ -60,8 +57,3 @@ import Numeric.MaxEnt.Internal (Constraint,
                         linear',
                         linear'',
                         LinearConstraints(..))
-
-
-
-
-

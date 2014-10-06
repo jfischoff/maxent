@@ -1,16 +1,18 @@
-{-# LANGUAGE ExistentialQuantification, Rank2Types, TupleSections,
+{-# LANGUAGE FlexibleContexts, Rank2Types, TupleSections,
              NoMonomorphismRestriction, StandaloneDeriving #-}
 
 module Numeric.MaxEnt.Linear where
 
+import Control.Applicative
+
 import Data.List (transpose)
 import qualified Data.Vector.Storable as S
 
-import Control.Applicative
-
 import Numeric.MaxEnt.ConjugateGradient (minimize, dot)
+import Numeric.Optimization.Algorithms.HagerZhang05 (Result, Statistics)
 import Numeric.AD
   
+multMV :: (Num a) => [[a]] -> [a] -> [a]
 multMV mat vec = map (\row -> dot row vec) mat
   
 probs :: (Floating a) => [[a]] -> [a] -> [a]
@@ -18,6 +20,7 @@ probs matrix ls = result where
     norm = partitionFunc matrix ls
     result = map (\x -> exp x / norm ) $ (transpose matrix) `multMV` ls
 
+partitionFunc :: (Floating a) => [[a]] -> [a] -> a
 partitionFunc matrix ws = sum . map exp . multMV (transpose matrix) $ ws
 
 -- This is almost the sam as the objectiveFunc                                   
@@ -28,8 +31,8 @@ objectiveFunc as moments ls = log $ partitionFunc as ls - dot ls moments
 data LinearConstraints = LC
   { unLC :: forall a. (Floating a) => ([[a]], [a]) }
 
-deriving instance Eq LinearConstraints
-deriving instance Show LinearConstraints
+--deriving instance Eq LinearConstraints
+--deriving instance Show LinearConstraints
 
 -- | This is for the linear case Ax = b 
 --   @x@ in this situation is the vector of probablities.
@@ -42,58 +45,53 @@ deriving instance Show LinearConstraints
 -- 
 --   Now if we were given just the convolution and the output, we can use 'linear' to infer the input.
 -- 
---   >>> linear 3.0e-17 $ LC [[0.68, 0.22, 0.1], [0.1, 0.68, 0.22], [0.22, 0.1, 0.68]] [0.276, 0.426, 0.298]
---   Right [0.20000000000000004,0.4999999999999999,0.3]
---   
---   I fell compelled to point out that we could also just invert the original convolution 
---   matrix. Supposedly using maxent can reduce errors from noise if the convolution 
---   matrix is not properly estimated.
--- 
---linear :: Double 
---       -- ^ Tolerance for the numerical solver
---       -> LinearConstraints
---       -- ^ The matrix A and column vector b
---       -> Either (Result, Statistics) (S.Vector Double)
---       -- ^ Either the a discription of what wrong or the probability distribution 
-linear tolerance constraints  = result where
-    (matrix, output) = unLC constraints
-    obj = objectiveFunc matrix output 
+--   >>> linear 3.0e-17 $ LC ([[0.68, 0.22, 0.1], [0.1, 0.68, 0.22], [0.22, 0.1, 0.68]], [0.276, 0.426, 0.298])
+--   Right (fromList [0.2000000000000001,0.49999999999999983,0.30000000000000004])
+--
+--   I fell compelled to point out that we could also just invert the original
+--   convolution matrix. Supposedly using maxent can reduce errors from noise if
+--   the convolution matrix is not properly estimated.
+linear :: Double 
+       -- ^ Tolerance for the numerical solver
+       -> LinearConstraints
+       -- ^ The matrix A and column vector b
+       -> Either (Result, Statistics) (S.Vector Double)
+       -- ^ Either a description of what went wrong or the probability
+       --   distribution 
+linear tolerance constraints  =
+    let (matrix, output) = unLC constraints
+        obj = objectiveFunc matrix output 
+        n = length output
+    in (S.fromList . probs matrix . S.toList) <$> minimize tolerance n obj
 
+--------------------------------------------------------------------------------
+-- I updated everything below to work with the new types, but it's not clear to 
+-- me what it's for.  -- EP
+--------------------------------------------------------------------------------
+
+linear' :: (Floating a, Ord a, Floating [a])
+        => LinearConstraints
+        -- ^ The matrix A and column vector b
+        -> [[a]]
+        -- ^ Either a description of what went wrong or the probability
+        --   distribution
+linear' constraints =
+    let (matrix, output) = unLC constraints
+        obj = objectiveFunc matrix output
+        guess = 1 : replicate (length output - 1) 0
+    in (probs matrix) . gradientDescent obj $ guess
     
-    matrix'    = matrix
-    count = length $ output 
-
-    result = (S.fromList . probs matrix' . S.toList) <$> minimize tolerance count obj
-   
-
---linear' :: LinearConstraints
---         -- ^ The matrix A and column vector b
---         -> [[Double]]
---         -- ^ Either the a discription of what wrong or the probability distribution
-linear' constraints = result where
-    (matrix, output) = unLC constraints
-    obj = objectiveFunc (matrix) (output) 
-
-    matrix' = matrix
-    count = length $ output
-    guess = 1 : replicate (count - 1) 0
-
-    result = map (probs matrix') . gradientDescent obj $ guess
-    
-    
---linear'' :: LinearConstraints
---         -- ^ The matrix A and column vector b
---         -> [[Double]]
---         -- ^ Either the a discription of what wrong or the probability distribution
+linear'' :: (Floating a, Ord a, Floating [a])
+         => LinearConstraints
+         -- ^ The matrix A and column vector b
+         -> [[a]]
+         -- ^ Either a description of what went wrong or the probability
+         --   distribution
 linear'' constraints = result where
     (matrix, output) = unLC constraints
     obj = objectiveFunc matrix output 
-
-    matrix' = matrix
-    count = length $ output
-    guess = 1 : replicate (count - 1) 0
-
-    result = map (probs matrix') . conjugateGradientDescent obj $ guess
+    guess = 1 : replicate (length output - 1) 0
+    result = map (probs matrix) . conjugateGradientDescent obj $ guess
 
 --test1 = LC ( [ [0.892532,0.003851,0.063870,0.001593,0.038155]
 --             , [0.237713,0.111149,0.326964,0.271535,0.052639]

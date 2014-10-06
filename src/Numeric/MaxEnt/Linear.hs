@@ -1,5 +1,5 @@
-{-# LANGUAGE FlexibleContexts, Rank2Types, TupleSections,
-             NoMonomorphismRestriction, StandaloneDeriving #-}
+{-# LANGUAGE FlexibleContexts, Rank2Types, NoMonomorphismRestriction,
+             StandaloneDeriving #-}
 
 module Numeric.MaxEnt.Linear where
 
@@ -31,8 +31,10 @@ objectiveFunc as moments ls = log $ partitionFunc as ls - dot ls moments
 data LinearConstraints = LC
   { unLC :: forall a. (Floating a) => ([[a]], [a]) }
 
---deriving instance Eq LinearConstraints
---deriving instance Show LinearConstraints
+-- These instances default the underlying numeric type of `LC` to `Double`,
+-- which may be problematic for some usages.
+deriving instance Eq LinearConstraints
+deriving instance Show LinearConstraints
 
 -- | This is for the linear case Ax = b 
 --   @x@ in this situation is the vector of probablities.
@@ -69,7 +71,7 @@ linear tolerance constraints  =
 -- me what it's for.  -- EP
 --------------------------------------------------------------------------------
 
-linear' :: (Floating a, Ord a, Floating [a])
+linear' :: (Floating a, Ord a)
         => LinearConstraints
         -- ^ The matrix A and column vector b
         -> [[a]]
@@ -79,19 +81,19 @@ linear' constraints =
     let (matrix, output) = unLC constraints
         obj = objectiveFunc matrix output
         guess = 1 : replicate (length output - 1) 0
-    in (probs matrix) . gradientDescent obj $ guess
+    in map (probs matrix) . gradientDescent obj $ guess
     
-linear'' :: (Floating a, Ord a, Floating [a])
+linear'' :: (Floating a, Ord a)
          => LinearConstraints
          -- ^ The matrix A and column vector b
          -> [[a]]
          -- ^ Either a description of what went wrong or the probability
          --   distribution
-linear'' constraints = result where
-    (matrix, output) = unLC constraints
-    obj = objectiveFunc matrix output 
-    guess = 1 : replicate (length output - 1) 0
-    result = map (probs matrix) . conjugateGradientDescent obj $ guess
+linear'' constraints =
+    let (matrix, output) = unLC constraints
+        obj = objectiveFunc matrix output 
+        guess = 1 : replicate (length output - 1) 0
+    in map (probs matrix) . conjugateGradientDescent obj $ guess
 
 --test1 = LC ( [ [0.892532,0.003851,0.063870,0.001593,0.038155]
 --             , [0.237713,0.111149,0.326964,0.271535,0.052639]

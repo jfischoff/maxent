@@ -44,7 +44,7 @@ instance Arbitrary (InvalidLinearConstraints Double) where
         return . InvalidLinearConstraints matrix . (map head) . M.toLists $ inputVector
 
 data ValidLinearConstraints = VLC
-  { unVLC :: forall a. (Floating a) => ([[a]], [a]) }
+  { unVLC :: forall a. Floating a => ([[a]], [a]) }
 
 toLC :: ValidLinearConstraints -> LinearConstraints
 toLC vlc = LC $ unVLC vlc
@@ -62,7 +62,7 @@ instance (Approximate a, Storable a) => Approximate (S.Vector a) where
     
 instance Approximate (ValidLinearConstraints) where
     (VLC (mx, ox)) =~= (VLC (my, oy)) =
-        mx =~= my && ox =~= oy
+        (mx :: [[Double]]) =~= my && (ox :: [Double]) =~= oy
 
 traceIt x = trace (show x) x
 
@@ -81,8 +81,8 @@ instance Arbitrary (ValidLinearConstraints) where
         
         let size = size' + 1
         
-        matrix <- vectorOf size (vectorOf size (suchThat arbitrary (>0.0)))
-        unnormalizedProbs <- vectorOf size (suchThat arbitrary (>0.0))
+        matrix <- vectorOf size (vectorOf size (suchThat arbitrary (>0.0))) :: Gen [[Double]]
+        unnormalizedProbs <- vectorOf size (suchThat arbitrary (>0.0)) :: Gen [Double]
         
         let probs       = normalize unnormalizedProbs
             --matrix' :: (Floating a) => [a]
@@ -92,7 +92,7 @@ instance Arbitrary (ValidLinearConstraints) where
             inputVector = hmatrix `multiply` hprobs
             output = map head $ M.toLists inputVector
             
-        return $ VLC (matrix', output)
+        return $ VLC (map (map (fromRational . toRational)) matrix', map (fromRational . toRational) output)
         
 --
 --toPoly :: RealFloat a => LinearConstraints Double -> LinearConstraints a

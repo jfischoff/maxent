@@ -103,7 +103,7 @@ Test-Suite tests
                  ad >= 4 && < 5,
                  hmatrix >= 0.14 && < 0.17,
                  lagrangian == 0.6.*,
-                 QuickCheck == 2.5.*,
+                 QuickCheck,
                  test-framework-quickcheck2 == 0.3.*,
                  test-framework-quickcheck2 == 0.3.*,
                  test-framework-hunit == 0.3.*,

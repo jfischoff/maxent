@@ -1,0 +1,9 @@
+cabal clean 
+cabal configure --enable-tests 
+cabal test 
+git tag -a v$1 -m "version $1"
+git commit -am "version $1"
+git push 
+cabal sdist 
+cabal upload dist/lagrangian-$1.tar.gz
+

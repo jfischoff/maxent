@@ -44,14 +44,15 @@ expCon2Con :: (forall a. (Floating a) => [a])
 expCon2Con vals expCon = f <=> c where
     (f, c) = unExpCon expCon vals
 
--- The average constraint
+-- | Build an average (mean) constraint
 average :: (forall a. (Floating a) => a) -> ExpectationConstraint
 average m = id .=. m
 
--- The variance constraint
+-- | Build a variance constraint
 variance :: (forall a. (Floating a) => a) -> ExpectationConstraint
 variance sigma = (^(2 :: Int)) .=. sigma
 
+-- | Build a constraint on raw moments of any order
 rawMoment :: Int -> (forall a. (Floating a) => a) -> ExpectationConstraint
 rawMoment n c = (^n) .=. c
 

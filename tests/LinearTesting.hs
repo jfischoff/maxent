@@ -1,31 +1,51 @@
 {-# LANGUAGE FlexibleInstances, BangPatterns, Rank2Types, StandaloneDeriving #-}
 
-module LinearTesting where
+module LinearTesting 
+    ( properties
+    ) where
 
-import Test.QuickCheck
+import Control.Applicative
+
+import Data.List (transpose, intersperse)
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Storable as S
-import Numeric.AD
-import GHC.IO                   (unsafePerformIO)
-import Data.Traversable
-import Data.List (transpose, intersperse)
-import Control.Applicative
-import Numeric.MaxEnt.Linear
 import qualified Data.Packed.Matrix as M
-import Numeric.LinearAlgebra
-import Numeric
+import Data.Traversable
+
 import Debug.Trace
-import qualified Data.Vector.Storable as S
+
 import Foreign.Storable
+
+import Numeric (showFFloat)
+import Numeric.AD
+import Numeric.MaxEnt.Linear
+import Numeric.LinearAlgebra
+
+import Test.Tasty
+import Test.Tasty.QuickCheck
+
+--------------------------------------------------------------------------------
+-- Test groups
+--------------------------------------------------------------------------------
+
+properties :: TestTree
+properties = testGroup "Properties"
+    [ testProperty "solvableSystemsAreSolvable" solvableSystemsAreSolvable
+    , testProperty "probsSumToOne" probsSumToOne
+    , testProperty "solutionFitsConstraints" solutionFitsConstraints   
+    ] 
+
+--------------------------------------------------------------------------------
+-- QuickCheck and helper datatypes, instances, etc.
+--------------------------------------------------------------------------------
 
 class Approximate a where
     (=~=) :: a -> a -> Bool
 
-data InvalidLinearConstraints a = InvalidLinearConstraints {
-        imatrix :: [[a]],
-        ioutput :: [a]
-    }
-    deriving(Eq, Show)
+data InvalidLinearConstraints a = InvalidLinearConstraints
+  { imatrix :: [[a]]
+  , ioutput :: [a]
+  } deriving (Eq, Show)
 
 instance Arbitrary (InvalidLinearConstraints Double) where
     arbitrary = sized $ \size -> do
@@ -100,6 +120,10 @@ instance Arbitrary (ValidLinearConstraints) where
 --     LC (map (map (fromRational . toRational)) x) 
 --                        (map (fromRational . toRational) y)
 
+--------------------------------------------------------------------------------
+-- QuickCheck properties
+--------------------------------------------------------------------------------
+
 solvableSystemsAreSolvable :: ValidLinearConstraints -> Bool
 solvableSystemsAreSolvable vlc =
     case linear 0.0000005 (toLC vlc) of
@@ -129,6 +153,12 @@ solutionFitsConstraints vlc = let lc = toLC vlc in
             
             
         Left _   -> False
+
+
+--------------------------------------------------------------------------------
+-- Unfinished stuff. After finishing, remember to move to the appropriate place
+-- and add to an exported test group.
+--------------------------------------------------------------------------------
 
 --This is not the test I want ..  but it does seem to work
 -- TODO you want to test against the original probs which should 
@@ -165,8 +195,3 @@ entropyIsMaximum vlc = let lc = toLC vlc in
 -- also if it is a maximum a small change in either direction that still fits the constraints
 -- should not lower the entropy
 -- 
-
-     
-    
-
---main = quickCheck probsSumToOne

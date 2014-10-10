@@ -5,8 +5,11 @@ module Numeric.MaxEnt.Moment (
         (.=.),
         average,
         variance,
+        rawMoment,
         maxent
     ) where
+
+import Control.Applicative
 
 import qualified Data.Vector.Storable as S
 
@@ -33,7 +36,7 @@ infixr 1 .=.
 (.=.) :: (forall a. (Floating a) => a -> a)
       -> (forall b. (Floating b) => b)
       -> ExpectationConstraint
-f .=. c = ExpCon $ \vals -> (sum .zipWith (*) vals . map f , c)
+f .=. c = ExpCon $ \vals -> (sum . zipWith (*) (f <$> vals), c)
 
 expCon2Con :: (forall a. (Floating a) => [a])
            -> ExpectationConstraint
@@ -48,6 +51,9 @@ average m = id .=. m
 -- The variance constraint
 variance :: (forall a. (Floating a) => a) -> ExpectationConstraint
 variance sigma = (^(2 :: Int)) .=. sigma
+
+rawMoment :: Int -> (forall a. (Floating a) => a) -> ExpectationConstraint
+rawMoment n c = (^n) .=. c
 
 -- | Discrete maximum entropy solver where the constraints are all moment
 -- constraints. 

@@ -6,6 +6,7 @@ module Numeric.MaxEnt.Moment (
         average,
         variance,
         rawMoment,
+        centralMoment,
         maxent
     ) where
 
@@ -55,6 +56,13 @@ variance sigma = (^(2 :: Int)) .=. sigma
 -- | Build a constraint on raw moments of any order
 rawMoment :: Int -> (forall a. (Floating a) => a) -> ExpectationConstraint
 rawMoment n c = (^n) .=. c
+
+-- Ugly and untested
+centralMoment :: Int -> (forall a. Floating a => a) -> ExpectationConstraint
+centralMoment n c = ExpCon $ \vals ->
+  (\probs -> sum . fmap (^n) . zipWith (-) vals $ meanList vals probs, c) where
+
+meanList vals probs = replicate (length vals) (sum $ zipWith (*) vals probs)
 
 -- | Discrete maximum entropy solver where the constraints are all moment
 -- constraints. 

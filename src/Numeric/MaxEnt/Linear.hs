@@ -8,28 +8,29 @@ import Control.Applicative
 import Data.List (transpose)
 import qualified Data.Vector.Storable as S
 
-import Numeric.MaxEnt.ConjugateGradient (minimize, dot)
+import Numeric.MaxEnt.ConjugateGradient (minimize)
+import Numeric.LinearAlgebra.HMatrix
 import Numeric.Optimization.Algorithms.HagerZhang05 (Result, Statistics)
 import Numeric.AD
   
-multMV :: (Num a) => [[a]] -> [a] -> [a]
-multMV mat vec = map (\row -> dot row vec) mat
+--multMV :: (Num a) => [[a]] -> [a] -> [a]
+--multMV mat vec = map (\row -> dot row vec) mat
   
-probs :: (Floating a) => [[a]] -> [a] -> [a]
+probs :: (Container Vector a, Floating a, Numeric a)
+      => Matrix a -> Vector a -> Vector a
 probs matrix ls = result where
     norm = partitionFunc matrix ls
-    result = map (\x -> exp x / norm ) $ (transpose matrix) `multMV` ls
+    result = cmap (\x -> exp x / norm ) $ tr matrix #> ls
 
-partitionFunc :: (Floating a) => [[a]] -> [a] -> a
-partitionFunc matrix ws = sum . map exp . multMV (transpose matrix) $ ws
+partitionFunc :: (Floating a, Numeric a) => Matrix a -> Vector a -> a
+partitionFunc matrix ws = sumElements . cmap exp $ tr matrix #> ws
 
--- This is almost the sam as the objectiveFunc                                   
-
-objectiveFunc :: (Floating a) => [[a]] -> [a] -> [a] -> a
+objectiveFunc :: (Floating a, Numeric a)
+              => Matrix a -> Vector a -> Vector a -> a
 objectiveFunc as moments ls = log $ partitionFunc as ls - dot ls moments
 
 data LinearConstraints = LC
-  { unLC :: forall a. (Floating a) => ([[a]], [a]) }
+  { unLC :: forall a. (Floating a) => (Matrix a, Vector a) }
 
 -- These instances default the underlying numeric type of `LC` to `Double`,
 -- which may be problematic for some usages.
@@ -62,38 +63,38 @@ linear :: Double
        --   distribution 
 linear tolerance constraints  =
     let (matrix, output) = unLC constraints
-        obj = objectiveFunc matrix output 
-        n = length output
-    in (S.fromList . probs matrix . S.toList) <$> minimize tolerance n obj
+        obj = objectiveFunc matrix output . fromList
+        n = size output
+    in (probs matrix) <$> minimize tolerance n obj
 
 --------------------------------------------------------------------------------
 -- I updated everything below to work with the new types, but it's not clear to 
 -- me what it's for.  -- EP
 --------------------------------------------------------------------------------
 
-linear' :: (Floating a, Ord a)
-        => LinearConstraints
-        -- ^ The matrix A and column vector b
-        -> [[a]]
-        -- ^ Either a description of what went wrong or the probability
-        --   distribution
-linear' constraints =
-    let (matrix, output) = unLC constraints
-        obj = objectiveFunc matrix output
-        guess = 1 : replicate (length output - 1) 0
-    in map (probs matrix) . gradientDescent obj $ guess
-    
-linear'' :: (Floating a, Ord a)
-         => LinearConstraints
-         -- ^ The matrix A and column vector b
-         -> [[a]]
-         -- ^ Either a description of what went wrong or the probability
-         --   distribution
-linear'' constraints =
-    let (matrix, output) = unLC constraints
-        obj = objectiveFunc matrix output 
-        guess = 1 : replicate (length output - 1) 0
-    in map (probs matrix) . conjugateGradientDescent obj $ guess
+--linear' :: (Floating a, Ord a)
+--        => LinearConstraints
+--        -- ^ The matrix A and column vector b
+--        -> Matrix a
+--        -- ^ Either a description of what went wrong or the probability
+--        --   distribution
+--linear' constraints =
+--    let (matrix, output) = unLC constraints
+--        obj = objectiveFunc matrix output
+--        guess = 1 : replicate (length output - 1) 0
+--    in cmap (probs matrix) . gradientDescent obj $ guess
+--    
+--linear'' :: (Floating a, Ord a)
+--         => LinearConstraints
+--         -- ^ The matrix A and column vector b
+--         -> Matrix a
+--         -- ^ Either a description of what went wrong or the probability
+--         --   distribution
+--linear'' constraints =
+--    let (matrix, output) = unLC constraints
+--        obj = objectiveFunc matrix output 
+--        guess = 1 : replicate (length output - 1) 0
+--    in cmap (probs matrix) . conjugateGradientDescent obj $ guess
 
 --test1 = LC ( [ [0.892532,0.003851,0.063870,0.001593,0.038155]
 --             , [0.237713,0.111149,0.326964,0.271535,0.052639]

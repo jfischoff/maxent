@@ -95,7 +95,7 @@ Test-Suite tests
   main-is:    Main.hs
   build-depends: base >=4.5 && < 5,
                  tasty >= 0.8 && < 0.9,
-                 tasty-hunit,
+                 tasty-hunit >= 0.8 && < 1.0,
                  tasty-quickcheck >= 0.8 && < 0.9,
                  vector ==0.10.*, 
                  hmatrix >= 0.14 && < 0.17,

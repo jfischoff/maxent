@@ -16,13 +16,11 @@ main = defaultMain tests
 tests :: TestTree
 tests = testGroup "Tests" [Linear.properties]
 
-
-
 --------------------------------------------------------------------------------
 -- Cross-module tests.
 --------------------------------------------------------------------------------
 
--- TODO: Write tests that compare results using different implementationds,
+-- TODO: Write tests that compare results using different implementations,
 -- e.g., using `Linear.linear` and `Moment.maxent` for problems with linear
 -- moment constraints.
 

@@ -80,6 +80,7 @@ library
   build-depends: base >=4.5 && < 5,
                  nonlinear-optimization == 0.3.*,
                  vector == 0.10.*, 
+                 hmatrix >= 0.16 && < 0.17,
                  ad >= 4 && < 5,
                  lagrangian >= 0.6 && < 0.7
   
@@ -98,7 +99,7 @@ Test-Suite tests
                  tasty-hunit >= 0.8 && < 1.0,
                  tasty-quickcheck >= 0.8 && < 0.9,
                  vector ==0.10.*, 
-                 hmatrix >= 0.14 && < 0.17,
+                 hmatrix >= 0.16 && < 0.17,
                  ad >= 4 && < 5,
                  nonlinear-optimization ==0.3.*,
                  maxent

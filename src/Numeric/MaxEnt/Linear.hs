@@ -5,31 +5,52 @@ module Numeric.MaxEnt.Linear where
 
 import Control.Applicative
 
-import Data.List (transpose)
+import qualified Data.Vector as V
 import qualified Data.Vector.Storable as S
 
-import Numeric.MaxEnt.ConjugateGradient (minimize, dot)
+import Numeric.MaxEnt.ConjugateGradient (minimize)
 import Numeric.Optimization.Algorithms.HagerZhang05 (Result, Statistics)
 import Numeric.AD
+
+dot :: Num a => V.Vector a -> V.Vector a -> a
+dot xs ys = V.sum $ V.zipWith (*) xs ys
+
+transpose :: V.Vector (V.Vector a) -> V.Vector (V.Vector a)
+transpose vec
+  | V.null vec = vec
+  | V.null $ V.head vec = transpose $ V.tail vec
+  | otherwise =
+        (x `V.cons` (heads xss)) `V.cons` (transpose $ xs `V.cons` (tails xss))
+      where
+        x = V.head $ V.head vec
+        xs = V.tail $ V.head vec
+        xss = V.tail vec
+
+heads :: V.Vector (V.Vector a) -> V.Vector a
+heads ys | V.null ys = V.empty
+         | otherwise = V.map V.head ys -- Not safe
+
+tails :: V.Vector (V.Vector a) -> V.Vector (V.Vector a)
+tails ys | V.null ys = V.empty
+         | otherwise = V.map V.tail ys
+
+multMV :: (Num a) => V.Vector (V.Vector a) -> V.Vector a -> V.Vector a
+multMV mat vec = V.map (\row -> dot row vec) mat
   
-multMV :: (Num a) => [[a]] -> [a] -> [a]
-multMV mat vec = map (\row -> dot row vec) mat
-  
-probs :: (Floating a) => [[a]] -> [a] -> [a]
+probs :: (Floating a) => V.Vector (V.Vector a) -> V.Vector a -> V.Vector a
 probs matrix ls = result where
     norm = partitionFunc matrix ls
-    result = map (\x -> exp x / norm ) $ (transpose matrix) `multMV` ls
+    result = V.map (\x -> exp x / norm ) $ (transpose matrix) `multMV` ls
 
-partitionFunc :: (Floating a) => [[a]] -> [a] -> a
-partitionFunc matrix ws = sum . map exp . multMV (transpose matrix) $ ws
+partitionFunc :: (Floating a) => V.Vector (V.Vector a) -> V.Vector a -> a
+partitionFunc matrix ws = V.sum . V.map exp . multMV (transpose matrix) $ ws
 
--- This is almost the sam as the objectiveFunc                                   
-
-objectiveFunc :: (Floating a) => [[a]] -> [a] -> [a] -> a
+objectiveFunc :: (Floating a)
+              => V.Vector (V.Vector a) -> V.Vector a -> V.Vector a -> a
 objectiveFunc as moments ls = log $ partitionFunc as ls - dot ls moments
 
 data LinearConstraints = LC
-  { unLC :: forall a. (Floating a) => ([[a]], [a]) }
+  { unLC :: forall a. (Floating a) => (V.Vector (V.Vector a), V.Vector a) }
 
 -- These instances default the underlying numeric type of `LC` to `Double`,
 -- which may be problematic for some usages.
@@ -62,9 +83,13 @@ linear :: Double
        --   distribution 
 linear tolerance constraints  =
     let (matrix, output) = unLC constraints
-        obj = objectiveFunc matrix output 
-        n = length output
-    in (S.fromList . probs matrix . S.toList) <$> minimize tolerance n obj
+        obj = objectiveFunc matrix output . V.fromList
+        n = V.length output
+        s2v = V.fromList . S.toList
+        v2s = S.fromList . V.toList
+    in v2s . probs matrix . s2v <$> minimize tolerance n obj
+
+
 
 --------------------------------------------------------------------------------
 -- I updated everything below to work with the new types, but it's not clear to 
@@ -74,26 +99,26 @@ linear tolerance constraints  =
 linear' :: (Floating a, Ord a)
         => LinearConstraints
         -- ^ The matrix A and column vector b
-        -> [[a]]
+        -> V.Vector (V.Vector a)
         -- ^ Either a description of what went wrong or the probability
         --   distribution
 linear' constraints =
     let (matrix, output) = unLC constraints
         obj = objectiveFunc matrix output
-        guess = 1 : replicate (length output - 1) 0
-    in map (probs matrix) . gradientDescent obj $ guess
+        guess = 1 `V.cons` V.replicate (V.length output - 1) 0
+    in V.map (probs matrix) . V.fromList . gradientDescent obj $ guess
     
 linear'' :: (Floating a, Ord a)
          => LinearConstraints
          -- ^ The matrix A and column vector b
-         -> [[a]]
+         -> V.Vector (V.Vector a)
          -- ^ Either a description of what went wrong or the probability
          --   distribution
 linear'' constraints =
     let (matrix, output) = unLC constraints
         obj = objectiveFunc matrix output 
-        guess = 1 : replicate (length output - 1) 0
-    in map (probs matrix) . conjugateGradientDescent obj $ guess
+        guess = 1 `V.cons` V.replicate (V.length output - 1) 0
+    in V.map (probs matrix) . V.fromList . conjugateGradientDescent obj $ guess
 
 --test1 = LC ( [ [0.892532,0.003851,0.063870,0.001593,0.038155]
 --             , [0.237713,0.111149,0.326964,0.271535,0.052639]

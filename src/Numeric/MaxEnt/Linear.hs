@@ -20,7 +20,7 @@ transpose vec
   | V.null vec = vec
   | V.null $ V.head vec = transpose $ V.tail vec
   | otherwise =
-        (x `V.cons` (heads xss)) `V.cons` (transpose $ xs `V.cons` (tails xss))
+        (x `V.cons` heads xss) `V.cons` (transpose $ xs `V.cons` tails xss)
       where
         x = V.head $ V.head vec
         xs = V.tail $ V.head vec

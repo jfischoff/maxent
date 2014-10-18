@@ -43,26 +43,26 @@ properties = testGroup "Properties"
 class Approximate a where
     (=~=) :: a -> a -> Bool
 
---data InvalidLinearConstraints a = InvalidLinearConstraints
---  { imatrix :: [[a]]
---  , ioutput :: [a]
---  } deriving (Eq, Show)
---
---instance Arbitrary (InvalidLinearConstraints Double) where
---    arbitrary = sized $ \size -> do
---    
---        matrix <- vectorOf size (vector size)
---        unnormalizedProbs <- vector size
---        
---        badSum <- suchThat arbitrary (/= 1.0) 
---        
---        let probs    = let total = sum unnormalizedProbs in 
---                                map (\x -> badSum * (x/total)) unnormalizedProbs
---            hmatrix     = M.fromLists matrix
---            hprobs      = M.fromLists $ transpose [probs]
---            inputVector = hmatrix `multiply` hprobs
---            
---        return . InvalidLinearConstraints matrix . (map head) . M.toLists $ inputVector
+data InvalidLinearConstraints a = InvalidLinearConstraints
+  { imatrix :: V.Vector (V.Vector a)
+  , ioutput :: V.Vector a
+  } deriving (Eq, Show)
+
+instance Arbitrary (InvalidLinearConstraints Double) where
+    arbitrary = sized $ \size -> do
+    
+        matrix <- vectorOf size (vector size)
+        unnormalizedProbs <- vector size
+        
+        badSum <- suchThat arbitrary (/= 1.0) 
+        
+        let probs    = let total = sum unnormalizedProbs in 
+                                map (\x -> badSum * (x/total)) unnormalizedProbs
+            probs' = V.fromList probs
+            matrix' = V.fromList $ map V.fromList matrix
+            inputVector = matrix' `multMV` probs'
+            
+        return $ InvalidLinearConstraints matrix' inputVector
 
 data ValidLinearConstraints = VLC
   { unVLC :: forall a. Floating a => (V.Vector (V.Vector a), V.Vector a) }

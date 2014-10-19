@@ -51,7 +51,7 @@ data InvalidLinearConstraints a = InvalidLinearConstraints
 instance Arbitrary (InvalidLinearConstraints Double) where
     arbitrary = sized $ \size -> do
     
-        matrix <- vectorOf size (vector size)
+        matrix <- vectorOf size $ vector size
         unnormalizedProbs <- vector size
         
         badSum <- suchThat arbitrary (/= 1.0) 
@@ -86,7 +86,7 @@ instance Approximate a => Approximate (V.Vector a) where
 instance (Approximate a, Storable a) => Approximate (S.Vector a) where
     xs =~= ys = S.all id . S.zipWith (=~=) xs $ ys
     
-instance Approximate (ValidLinearConstraints) where
+instance Approximate ValidLinearConstraints where
     (VLC (mx, ox)) =~= (VLC (my, oy)) =
         (mx :: V.Vector (V.Vector Double)) =~= my && (ox :: V.Vector Double) =~= oy
 
@@ -96,7 +96,7 @@ printRow :: [Double] -> String
 printRow xs = "[" ++ 
    concat (intersperse "," (map (\x -> showFFloat (Just 6) x "") xs)) ++ "]"
 
-instance Show (ValidLinearConstraints) where
+instance Show ValidLinearConstraints where
    show (VLC (xss, xs)) = "matrix = [" ++ 
        concat (intersperse "," $ map printRow xss') ++ "]\n output = " ++ printRow xs' where
         xss' = map V.toList $ V.toList xss
@@ -104,22 +104,20 @@ instance Show (ValidLinearConstraints) where
 
 normalize xs = let total = V.sum xs in V.map (/total) xs
 
-instance Arbitrary (ValidLinearConstraints) where
+instance Arbitrary ValidLinearConstraints where
     arbitrary = sized $ \size' -> do
         
         let size = size' + 1
         
-        matrixList <- vectorOf size (vectorOf size (suchThat arbitrary (>0.0))) :: Gen [[Double]]
-        unnormalizedProbsList <- vectorOf size (suchThat arbitrary (>0.0)) :: Gen [Double]
+        matrixList <- vectorOf size $ vectorOf size $ suchThat arbitrary (>0.0) :: Gen [[Double]]
+        unnormalizedProbsList <- vectorOf size $ suchThat arbitrary (>0.0) :: Gen [Double]
         
         let probs       = normalize $ V.fromList unnormalizedProbsList
-            --matrix' :: (Floating a) => [a]
             matrix'     = V.map normalize $ V.fromList $ map V.fromList matrixList
-            --probs'      = transpose $ V.singleton probs
-            inputVector = matrix' `multMV` probs
-            output = inputVector
+            output = matrix' `multMV` probs
             
-        return $ VLC (V.map (V.map (fromRational . toRational)) matrix', V.map (fromRational . toRational) output)
+        return $ VLC ( V.map (V.map (fromRational . toRational)) matrix'
+                     , V.map (fromRational . toRational) output)
         
 --
 --toPoly :: RealFloat a => LinearConstraints Double -> LinearConstraints a
@@ -156,10 +154,7 @@ solutionFitsConstraints vlc = let lc = toLC vlc in
     
             ps' = V.fromList $ S.toList ps
             inputVector = x `multMV` ps'
-            
-            
         Left _   -> False
-
 
 --------------------------------------------------------------------------------
 -- Unfinished stuff. After finishing, remember to move to the appropriate place
